@@ -179,7 +179,7 @@ getId phabId =
 
 debounce : Msg -> Msg
 debounce =
-    Debounce.trailing Deb (1 * Time.second)
+    Debounce.trailing Deb (0.5 * Time.second)
 
 
 view : Model -> Html Msg
