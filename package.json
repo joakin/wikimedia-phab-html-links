@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "start": "elm-app start",
+    "build": "elm-app build && sed -ie 's/\"\\//\".\\//g' dist/index.html"
+  }
+}
