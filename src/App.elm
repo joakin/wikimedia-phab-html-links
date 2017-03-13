@@ -167,7 +167,12 @@ updateReceivedTasks : List PhabTask -> Model -> Model
 updateReceivedTasks tasks ({ taskLinks } as model) =
     let
         newTaskLinks =
-            List.foldl (\t d -> Dict.insert ("T" ++ toString t.id) (RemoteData.succeed t) d) taskLinks tasks
+            List.foldl
+                (\t d ->
+                    Dict.insert ("T" ++ toString t.id) (RemoteData.succeed t) d
+                )
+                taskLinks
+                tasks
     in
         { model | taskLinks = newTaskLinks }
 
