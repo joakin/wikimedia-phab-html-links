@@ -1,7 +1,7 @@
 module App exposing (..)
 
 import Html exposing (Html, text, div, textarea, p, a)
-import Html.Attributes exposing (map, style, href)
+import Html.Attributes exposing (map, style, href, placeholder)
 import Html.Events exposing (onInput)
 import Time
 import Control exposing (Control)
@@ -194,27 +194,44 @@ view model =
             ]
         ]
         [ textarea
-            [ style [ ( "flex", "1" ), ( "width", "90%" ), ( "display", "block" ) ]
+            [ style
+                [ ( "flex", "1" )
+                , ( "width", "90%" )
+                , ( "display", "block" )
+                , ( "padding", "1em" )
+                , ( "box-sizing", "border-box" )
+                ]
             , map debounce <| onInput ChangeLinksText
+            , placeholder "Write task numbers or task links here, like T12345"
             ]
             [ text model.linksText
             ]
-        , div [ style [ ( "flex", "1" ), ( "width", "90%" ) ] ]
+        , div
+            [ style
+                [ ( "flex", "1" )
+                , ( "box-sizing", "border-box" )
+                , ( "padding", "1em" )
+                , ( "width", "90%" )
+                ]
+            ]
             (model.taskLinks
                 |> Dict.toList
-                |> List.map (\( k, v ) -> taskLink v)
+                |> List.map (\( k, v ) -> taskLink k v)
             )
         ]
 
 
-taskLink : RemoteData String PhabTask -> Html Msg
-taskLink data =
+taskLink : String -> RemoteData String PhabTask -> Html Msg
+taskLink id data =
     p []
         [ (case data of
             Success task ->
                 a
                     [ href <| "https://phabricator.wikimedia.org/T" ++ (toString task.id) ]
                     [ text <| "T" ++ (toString task.id) ++ ": " ++ task.name ]
+
+            Loading ->
+                text <| id ++ ": Loading data"
 
             _ ->
                 text ""
