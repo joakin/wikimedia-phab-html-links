@@ -121,35 +121,40 @@ view model =
         ]
         [ textarea
             [ style
-                [ ( "flex", "1" )
+                [ ( "flex", "2 2 auto" )
                 , ( "width", "90%" )
                 , ( "display", "block" )
                 , ( "padding", "1em" )
                 , ( "box-sizing", "border-box" )
+                , ( "overflow", "auto" )
                 ]
             , onInput ChangeLinksText
             , placeholder "Write task numbers or task links here, like T12345"
             ]
             [ text model.linksText
             ]
-        , div
-            [ style
-                [ ( "flex", "1" )
-                , ( "box-sizing", "border-box" )
-                , ( "padding", "1em" )
-                , ( "width", "90%" )
-                ]
-            ]
-            (model.doodads
-                |> Dict.toList
-                |> List.map (\( k, v ) -> Doodad.render k v)
-            )
+          -- , div
+          --     [ style
+          --         [ ( "flex", "1 1 auto" )
+          --         , ( "box-sizing", "border-box" )
+          --         , ( "padding", "1em" )
+          --         , ( "width", "90%" )
+          --         , ( "background-color", "#fafafa" )
+          --         , ( "overflow", "auto" )
+          --         ]
+          --     ]
+          --     (model.doodads
+          --         |> Dict.toList
+          --         |> List.map (\( k, v ) -> Doodad.render k v)
+          --     )
         , Markdown.toHtml
             [ style
-                [ ( "flex", "1" )
+                [ ( "flex", "3 3 auto" )
                 , ( "box-sizing", "border-box" )
                 , ( "padding", "1em" )
                 , ( "width", "90%" )
+                , ( "background-color", "#f3f3f3" )
+                , ( "overflow", "auto" )
                 ]
             ]
             (renderDoodadsInText model.doodads model.linksText)
