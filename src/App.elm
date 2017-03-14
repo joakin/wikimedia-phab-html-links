@@ -3,6 +3,7 @@ module App exposing (..)
 import Html exposing (Html, text, div, textarea, p, a)
 import Html.Attributes exposing (map, style, href, placeholder)
 import Html.Events exposing (onInput)
+import Http
 import Time
 import Control exposing (Control)
 import Control.Debounce as Debounce
@@ -120,19 +121,44 @@ view model =
             , ( "justify-content", "center" )
             ]
         ]
-        [ textarea
+        [ div
             [ style
                 [ ( "flex", "2" )
                 , ( "width", "90%" )
                 , ( "display", "block" )
-                , ( "padding", "1em" )
-                , ( "box-sizing", "border-box" )
                 , ( "overflow", "auto" )
+                , ( "position", "relative" )
                 ]
-            , onInput ChangeLinksText
-            , placeholder "Write task numbers or task links here, like T12345"
             ]
-            [ text model.linksText
+            [ textarea
+                [ style
+                    [ ( "position", "absolute" )
+                    , ( "top", "0" )
+                    , ( "left", "0" )
+                    , ( "bottom", "0" )
+                    , ( "box-sizing", "border-box" )
+                    , ( "width", "100%" )
+                    , ( "padding", "1em" )
+                    , ( "z-index", "0" )
+                    ]
+                , onInput ChangeLinksText
+                , placeholder "Write task numbers or task links here, like T12345"
+                ]
+                [ text model.linksText
+                ]
+            , a
+                [ style
+                    [ ( "position", "absolute" )
+                    , ( "top", "1px" )
+                    , ( "right", "1px" )
+                    , ( "font-size", "0.5em" )
+                    , ( "padding", "0.3em 0.8em 0.5em" )
+                    , ( "background-color", "#f3f3f3" )
+                    , ( "cursor", "pointer" )
+                    ]
+                , href <| "./?t=" ++ Http.encodeUri model.linksText
+                ]
+                [ text "permalink" ]
             ]
           -- , div
           --     [ style
