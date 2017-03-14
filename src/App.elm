@@ -3,44 +3,40 @@ module App exposing (..)
 import Html exposing (Html, text, div, textarea, p, a)
 import Html.Attributes exposing (map, style, href, placeholder)
 import Html.Events exposing (onInput)
+import Http
 import Time
 import Control exposing (Control)
 import Control.Debounce as Debounce
 import Dict exposing (Dict)
 import Regex exposing (Regex, regex, find, HowMany(All))
 import RemoteData exposing (RemoteData(..))
-import Http exposing (stringBody)
-import Json.Decode as D exposing (Decoder)
+import Api.Phabricator as Phab exposing (PhabTask)
 
 
 type alias Flags =
     { noop : String }
 
 
+type Doodad
+    = Phab (RemoteData String PhabTask)
+
+
 type alias Model =
     { phabricatorToken : String
     , linksText : String
     , state : Control.State Msg
-    , taskLinks : Dict String (RemoteData String PhabTask)
+    , doodads : Dict String Doodad
+    , outputText : String
     }
-
-
-myPhabToken : String
-myPhabToken =
-    "api-xiun6obnzo5de5iehv5kxctypljz"
-
-
-apiUrl : String
-apiUrl =
-    "https://cors-proxy-mhwanfbyyu.now.sh/https://phabricator.wikimedia.org/api/maniphest.search"
 
 
 init : Flags -> ( Model, Cmd Msg )
 init path =
-    { phabricatorToken = myPhabToken
+    { phabricatorToken = Phab.myPhabToken
     , linksText = ""
     , state = Control.initialState
-    , taskLinks = Dict.empty
+    , doodads = Dict.empty
+    , outputText = ""
     }
         ! []
 
@@ -66,7 +62,7 @@ update msg model =
                     if List.isEmpty listIds then
                         Cmd.none
                     else
-                        Http.send SearchResponse <| getPhabricatorIdsInfo model.phabricatorToken listIds
+                        Http.send SearchResponse <| Phab.searchById model.phabricatorToken listIds
             in
                 ( newModel, cmds )
 
@@ -84,21 +80,6 @@ update msg model =
                 ( model, Cmd.none )
 
 
-getPhabricatorIdsInfo : String -> List Int -> Http.Request (List PhabTask)
-getPhabricatorIdsInfo token ids =
-    let
-        idPair : Int -> Int -> ( String, String )
-        idPair i id =
-            ( "constraints[ids][" ++ (toString i) ++ "]", toString id )
-
-        body =
-            stringBody "application/x-www-form-urlencoded; charset=UTF-8" <|
-                joinUrlEncoded
-                    ([ ( "api.token", token ) ] ++ List.indexedMap idPair ids)
-    in
-        Http.post apiUrl body decodePhabTasks
-
-
 taskRegex : Regex
 taskRegex =
     regex "T\\d+"
@@ -110,75 +91,77 @@ updateTaskLinksFromLinksText model =
         matches =
             List.map .match <| find All taskRegex model.linksText
 
-        filteredTaskLinks =
-            Dict.filter (\k v -> List.member k matches) model.taskLinks
+        activeTaskLinks =
+            keepOnlyKeys matches model.doodads
 
-        taskLinks =
-            List.foldl (\m d -> Dict.update m (updateIfNothing NotAsked) d)
-                filteredTaskLinks
+        doodads =
+            List.foldl (\match dict -> Dict.update match (mapNothing <| Phab NotAsked) dict)
+                activeTaskLinks
                 matches
     in
-        { model | taskLinks = taskLinks }
+        { model | doodads = doodads }
 
 
-updateIfNothing : RemoteData e a -> Maybe (RemoteData e a) -> Maybe (RemoteData e a)
-updateIfNothing update entry =
+keepOnlyKeys : List String -> Dict String a -> Dict String a
+keepOnlyKeys keys dict =
+    Dict.filter (\key _ -> List.member key keys) dict
+
+
+mapNothing : a -> Maybe a -> Maybe a
+mapNothing value entry =
     case entry of
         Just _ ->
             entry
 
         Nothing ->
-            Just update
+            Just value
 
 
 updateNotAskedAndExtractIds : Model -> ( Model, List Int )
-updateNotAskedAndExtractIds ({ taskLinks } as model) =
+updateNotAskedAndExtractIds ({ doodads } as model) =
     let
-        taskLinksList : List ( String, RemoteData String PhabTask )
-        taskLinksList =
-            Dict.toList taskLinks
+        doodadsList =
+            Dict.toList doodads
 
         ( tl, ids ) =
-            List.foldl updateAndGetId ( taskLinks, [] ) taskLinksList
+            List.foldl updateAndGetId ( doodads, [] ) doodadsList
     in
-        ( { model | taskLinks = tl }, ids )
+        ( { model | doodads = tl }, ids )
 
 
 updateAndGetId :
-    ( String, RemoteData String PhabTask )
-    -> ( Dict String (RemoteData String PhabTask), List Int )
-    -> ( Dict String (RemoteData String PhabTask), List Int )
-updateAndGetId ( key, data ) ( dict, ids ) =
-    -- Check if data is NotAsked
-    case data of
-        NotAsked ->
-            case getId key of
-                Ok num ->
-                    ( Dict.insert key Loading dict, ids ++ [ num ] )
+    ( String, Doodad )
+    -> ( Dict String Doodad, List Int )
+    -> ( Dict String Doodad, List Int )
+updateAndGetId ( key, doodad ) ( dict, ids ) =
+    case doodad of
+        Phab data ->
+            -- Set NotAsked as Loading and collect ids
+            case data of
+                NotAsked ->
+                    case getPhabId key of
+                        Ok num ->
+                            ( Dict.insert key (Phab Loading) dict, ids ++ [ num ] )
 
-                Err str ->
-                    ( Dict.insert key (Failure str) dict, ids )
+                        Err str ->
+                            ( Dict.insert key (Phab (Failure str)) dict, ids )
 
-        _ ->
-            ( dict, ids )
+                _ ->
+                    ( dict, ids )
 
 
 updateReceivedTasks : List PhabTask -> Model -> Model
-updateReceivedTasks tasks ({ taskLinks } as model) =
-    let
-        newTaskLinks =
-            List.foldl
-                (\t d ->
-                    Dict.insert ("T" ++ toString t.id) (RemoteData.succeed t) d
-                )
-                taskLinks
-                tasks
-    in
-        { model | taskLinks = newTaskLinks }
+updateReceivedTasks tasks ({ doodads } as model) =
+    { model | doodads = List.foldl insertTask doodads tasks }
 
 
-getId : String -> Result String Int
-getId phabId =
+insertTask : PhabTask -> Dict String Doodad -> Dict String Doodad
+insertTask task dict =
+    Dict.insert ("T" ++ toString task.id) (Phab (RemoteData.succeed task)) dict
+
+
+getPhabId : String -> Result String Int
+getPhabId phabId =
     phabId |> String.dropLeft 1 |> String.toInt
 
 
@@ -219,27 +202,29 @@ view model =
                 , ( "width", "90%" )
                 ]
             ]
-            (model.taskLinks
+            (model.doodads
                 |> Dict.toList
-                |> List.map (\( k, v ) -> taskLink k v)
+                |> List.map (\( k, v ) -> viewDoodad k v)
             )
         ]
 
 
-taskLink : String -> RemoteData String PhabTask -> Html Msg
-taskLink id data =
+viewDoodad : String -> Doodad -> Html Msg
+viewDoodad id doodad =
     p []
-        [ (case data of
-            Success task ->
-                a
-                    [ href <| "https://phabricator.wikimedia.org/T" ++ (toString task.id) ]
-                    [ text <| "T" ++ (toString task.id) ++ ": " ++ task.name ]
+        [ (case doodad of
+            Phab data ->
+                case data of
+                    Success task ->
+                        a
+                            [ href <| "https://phabricator.wikimedia.org/T" ++ (toString task.id) ]
+                            [ text <| "T" ++ (toString task.id) ++ ": " ++ task.name ]
 
-            Loading ->
-                text <| id ++ ": Loading data"
+                    Loading ->
+                        text <| id ++ ": Loading data"
 
-            _ ->
-                text ""
+                    _ ->
+                        text id
           )
         ]
 
@@ -247,132 +232,3 @@ taskLink id data =
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
-
-
-joinUrlEncoded : List ( String, String ) -> String
-joinUrlEncoded args =
-    String.join "&" (List.map queryPair args)
-
-
-queryPair : ( String, String ) -> String
-queryPair ( key, value ) =
-    queryEscape key ++ "=" ++ queryEscape value
-
-
-queryEscape : String -> String
-queryEscape =
-    Http.encodeUri >> replace "%20" "+"
-
-
-replace : String -> String -> String -> String
-replace old new =
-    String.split old >> String.join new
-
-
-type alias PhabTask =
-    { id : Int
-    , name : String
-    , status : String
-    }
-
-
-decodePhabTask : Decoder PhabTask
-decodePhabTask =
-    D.map3 PhabTask
-        (D.field "id" D.int)
-        (D.at [ "fields", "name" ] D.string)
-        (D.at [ "fields", "status", "name" ] D.string)
-
-
-decodePhabTasks : Decoder (List PhabTask)
-decodePhabTasks =
-    (D.at [ "result", "data" ] (D.list decodePhabTask))
-
-
-
--- {
---   "result": {
---     "data": [
---       {
---         "id": 321,
---         "type": "TASK",
---         "phid": "PHID-TASK-oq34j4ynau5g2cvb34cf",
---         "fields": {
---           "name": "Allow tracking bugs",
---           "authorPHID": "PHID-USER-nyhmztvvw4luz5mlcuvg",
---           "ownerPHID": "PHID-USER-hgn5uw2jafgjgfvxibhh",
---           "status": {
---             "value": "invalid",
---             "name": "Invalid",
---             "color": null
---           },
---           "priority": {
---             "value": 90,
---             "subpriority": 0.034384364493165,
---             "name": "Needs Triage",
---             "color": "violet"
---           },
---           "points": null,
---           "subtype": "default",
---           "spacePHID": null,
---           "dateCreated": 1406158292,
---           "dateModified": 1413674973,
---           "policy": {
---             "view": "public",
---             "interact": "users",
---             "edit": "users"
---           },
---           "custom.security_topic": null,
---           "custom.external_reference": "fl500"
---         },
---         "attachments": {}
---       },
---       {
---         "id": 123,
---         "type": "TASK",
---         "phid": "PHID-TASK-y2px7ogikirl56nqk7dk",
---         "fields": {
---           "name": "Turn on \"diffusion.allow-http-auth\"",
---           "authorPHID": "PHID-USER-pntojlcbclwhuip53bix",
---           "ownerPHID": "PHID-USER-lluzkul4z7us4sxkayss",
---           "status": {
---             "value": "declined",
---             "name": "Declined",
---             "color": null
---           },
---           "priority": {
---             "value": 50,
---             "subpriority": -0.087025037258797,
---             "name": "Normal",
---             "color": "orange"
---           },
---           "points": null,
---           "subtype": "default",
---           "spacePHID": null,
---           "dateCreated": 1398289650,
---           "dateModified": 1486670523,
---           "policy": {
---             "view": "public",
---             "interact": "users",
---             "edit": "users"
---           },
---           "custom.security_topic": null,
---           "custom.external_reference": "fl203"
---         },
---         "attachments": {}
---       }
---     ],
---     "maps": {},
---     "query": {
---       "queryKey": null
---     },
---     "cursor": {
---       "limit": 100,
---       "after": null,
---       "before": null,
---       "order": null
---     }
---   },
---   "error_code": null,
---   "error_info": null
--- }
