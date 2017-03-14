@@ -12,3 +12,61 @@ body, td, input, select, textarea {
 }
 
 a { color: #0088ff; }
+
+.app {
+  min-height: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.editor-wrapper {
+  flex: 2;
+  width: 90%;
+  display: block;
+  overflow: auto;
+  position: relative;
+}
+
+.editor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 1em;
+  z-index: 0;
+}
+
+.permalink {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 0.5em;
+  padding: 0.3em 0.8em 0.5em;
+  background-color: #f3f3f3;
+  cursor: pointer;
+}
+
+.document {
+  flex: 3;
+  box-sizing: border-box;
+  padding: 1em;
+  width: 90%;
+  background-color: #f3f3f3;
+  overflow: auto;
+}
+
+@media only screen and (min-width: 768px) {
+  .app {
+    flex-direction: row;
+  }
+  .editor-wrapper, .document {
+    width: auto;
+    height: 90%;
+    flex: 1
+  }
+}

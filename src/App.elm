@@ -1,7 +1,7 @@
 module App exposing (..)
 
 import Html exposing (Html, text, div, textarea, p, a)
-import Html.Attributes exposing (map, style, href, placeholder)
+import Html.Attributes exposing (map, class, href, placeholder)
 import Html.Events exposing (onInput)
 import Http
 import Time
@@ -112,50 +112,18 @@ debounce =
 view : Model -> Html Msg
 view model =
     div
-        [ style
-            [ ( "min-height", "100%" )
-            , ( "height", "100%" )
-            , ( "display", "flex" )
-            , ( "flex-direction", "column" )
-            , ( "align-items", "center" )
-            , ( "justify-content", "center" )
-            ]
-        ]
+        [ class "app" ]
         [ div
-            [ style
-                [ ( "flex", "2" )
-                , ( "width", "90%" )
-                , ( "display", "block" )
-                , ( "overflow", "auto" )
-                , ( "position", "relative" )
-                ]
-            ]
+            [ class "editor-wrapper" ]
             [ textarea
-                [ style
-                    [ ( "position", "absolute" )
-                    , ( "top", "0" )
-                    , ( "left", "0" )
-                    , ( "bottom", "0" )
-                    , ( "box-sizing", "border-box" )
-                    , ( "width", "100%" )
-                    , ( "padding", "1em" )
-                    , ( "z-index", "0" )
-                    ]
+                [ class "editor"
                 , onInput ChangeLinksText
                 , placeholder "Write task numbers or task links here, like T12345"
                 ]
                 [ text model.linksText
                 ]
             , a
-                [ style
-                    [ ( "position", "absolute" )
-                    , ( "top", "1px" )
-                    , ( "right", "1px" )
-                    , ( "font-size", "0.5em" )
-                    , ( "padding", "0.3em 0.8em 0.5em" )
-                    , ( "background-color", "#f3f3f3" )
-                    , ( "cursor", "pointer" )
-                    ]
+                [ class "permalink"
                 , href <| "./?t=" ++ Http.encodeUri model.linksText
                 ]
                 [ text "permalink" ]
@@ -175,14 +143,6 @@ view model =
           --         |> List.map (\( k, v ) -> Doodad.render k v)
           --     )
         , Markdown.toHtml
-            [ style
-                [ ( "flex", "3" )
-                , ( "box-sizing", "border-box" )
-                , ( "padding", "1em" )
-                , ( "width", "90%" )
-                , ( "background-color", "#f3f3f3" )
-                , ( "overflow", "auto" )
-                ]
-            ]
+            [ class "document" ]
             (renderDoodadsInText model.doodads model.linksText)
         ]
