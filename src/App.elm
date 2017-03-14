@@ -18,15 +18,15 @@ type alias Flags =
 
 
 type alias Model =
-    { token : String
+    { phabricatorToken : String
     , linksText : String
     , state : Control.State Msg
     , taskLinks : Dict String (RemoteData String PhabTask)
     }
 
 
-myToken : String
-myToken =
+myPhabToken : String
+myPhabToken =
     "api-xiun6obnzo5de5iehv5kxctypljz"
 
 
@@ -37,7 +37,7 @@ apiUrl =
 
 init : Flags -> ( Model, Cmd Msg )
 init path =
-    { token = myToken
+    { phabricatorToken = myPhabToken
     , linksText = ""
     , state = Control.initialState
     , taskLinks = Dict.empty
@@ -66,7 +66,7 @@ update msg model =
                     if List.isEmpty listIds then
                         Cmd.none
                     else
-                        Http.send SearchResponse <| getPhabricatorIdsInfo model.token listIds
+                        Http.send SearchResponse <| getPhabricatorIdsInfo model.phabricatorToken listIds
             in
                 ( newModel, cmds )
 
