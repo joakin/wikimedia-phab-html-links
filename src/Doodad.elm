@@ -52,7 +52,7 @@ renderInText : String -> Doodad -> String -> String
 renderInText key doodad text =
     let
         rx =
-            regex (escape key)
+            regex <| "\\b" ++ (escape key) ++ "\\b"
 
         renderText =
             (\_ ->
