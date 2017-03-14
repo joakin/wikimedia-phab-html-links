@@ -35,20 +35,24 @@ key =
     .match << .match
 
 
-fetch : (List PhabDoodad -> msg) -> List PhabDoodad -> Cmd msg
+fetch : (List PhabDoodad -> msg) -> List PhabDoodad -> ( List PhabDoodad, Cmd msg )
 fetch tagger doodads =
     let
         doodadsToFetch =
-            List.filter (\d -> d.status == NotAsked) doodads
+            doodads
+                |> List.filter (\d -> d.status == NotAsked)
+                |> List.map loadingStatus
 
         ids =
             getFetchIds doodadsToFetch
     in
         if List.isEmpty ids then
-            Cmd.none
+            ( doodadsToFetch, Cmd.none )
         else
-            searchById ids
+            ( doodadsToFetch
+            , searchById ids
                 |> Http.send (tagger << (mapHttpResponse doodadsToFetch))
+            )
 
 
 render : PhabDoodad -> Html a
@@ -118,6 +122,11 @@ successStatus task doodad =
 failureStatus : String -> PhabDoodad -> PhabDoodad
 failureStatus err doodad =
     { doodad | status = Failure err }
+
+
+loadingStatus : PhabDoodad -> PhabDoodad
+loadingStatus doodad =
+    { doodad | status = Loading }
 
 
 getFetchIds : List PhabDoodad -> List Int

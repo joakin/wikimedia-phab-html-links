@@ -71,21 +71,21 @@ process text doodads =
         matches =
             match text
 
-        matchesKeys =
-            List.map key matches
-
         -- Filter and keep only active doodads in dict
         activeDoodads =
-            keepOnlyKeys matchesKeys doodads
+            keepOnlyKeys (List.map key matches) doodads
 
-        -- Update new not-processed doodads into the dictionary
+        -- Update new not-processed doodads in the dictionary
         newDoodads =
             updateEmptyEntries matches activeDoodads
 
-        cmd =
+        ( updatedDoodadsList, cmd ) =
             fetch UpdateDoodads (Dict.values newDoodads)
+
+        processedDoodads =
+            updateExistingEntries updatedDoodadsList newDoodads
     in
-        ( newDoodads, cmd )
+        ( processedDoodads, cmd )
 
 
 match : String -> List Doodad
@@ -93,7 +93,7 @@ match text =
     List.map Phab (Phab.match text)
 
 
-fetch : (List Doodad -> Msg) -> List Doodad -> Cmd Msg
+fetch : (List Doodad -> Msg) -> List Doodad -> ( List Doodad, Cmd Msg )
 fetch tagger doodads =
     let
         ( phabs, _ ) =
@@ -105,10 +105,11 @@ fetch tagger doodads =
                 )
                 ( [], Nothing )
                 doodads
+
+        ( newPhabs, phabCmds ) =
+            Phab.fetch (UpdateDoodads << List.map Phab) phabs
     in
-        Cmd.batch
-            [ Phab.fetch (UpdateDoodads << List.map Phab) phabs
-            ]
+        (List.map Phab newPhabs) ! [ phabCmds ]
 
 
 key : Doodad -> String
