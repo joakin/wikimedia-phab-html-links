@@ -113,6 +113,7 @@ view model =
     div
         [ style
             [ ( "min-height", "100%" )
+            , ( "height", "100%" )
             , ( "display", "flex" )
             , ( "flex-direction", "column" )
             , ( "align-items", "center" )
@@ -121,7 +122,7 @@ view model =
         ]
         [ textarea
             [ style
-                [ ( "flex", "2 2 auto" )
+                [ ( "flex", "2" )
                 , ( "width", "90%" )
                 , ( "display", "block" )
                 , ( "padding", "1em" )
@@ -135,7 +136,7 @@ view model =
             ]
           -- , div
           --     [ style
-          --         [ ( "flex", "1 1 auto" )
+          --         [ ( "flex", "1" )
           --         , ( "box-sizing", "border-box" )
           --         , ( "padding", "1em" )
           --         , ( "width", "90%" )
@@ -149,7 +150,7 @@ view model =
           --     )
         , Markdown.toHtml
             [ style
-                [ ( "flex", "3 3 auto" )
+                [ ( "flex", "3" )
                 , ( "box-sizing", "border-box" )
                 , ( "padding", "1em" )
                 , ( "width", "90%" )
