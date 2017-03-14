@@ -14,7 +14,7 @@ import Task
 
 
 type alias Flags =
-    { noop : String }
+    { text : String }
 
 
 type alias Model =
@@ -26,8 +26,8 @@ type alias Model =
 
 
 init : Flags -> ( Model, Cmd Msg )
-init path =
-    { linksText = ""
+init flags =
+    { linksText = flags.text
     , state = Control.initialState
     , doodads = Dict.empty
     , outputText = ""
