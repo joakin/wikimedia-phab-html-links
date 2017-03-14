@@ -21,8 +21,8 @@ actions =
     }
 
 
-searchById : String -> List Int -> Http.Request (List PhabTask)
-searchById token ids =
+searchById : List Int -> Http.Request (List PhabTask)
+searchById ids =
     let
         idPair : Int -> Int -> ( String, String )
         idPair i id =
@@ -31,7 +31,7 @@ searchById token ids =
         body =
             stringBody "application/x-www-form-urlencoded; charset=UTF-8" <|
                 joinUrlEncoded
-                    ([ ( "api.token", token ) ] ++ List.indexedMap idPair ids)
+                    ([ ( "api.token", myPhabToken ) ] ++ List.indexedMap idPair ids)
     in
         Http.post (apiUrl ++ actions.search) body decodePhabTasks
 

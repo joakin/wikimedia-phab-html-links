@@ -3,14 +3,11 @@ module App exposing (..)
 import Html exposing (Html, text, div, textarea, p, a)
 import Html.Attributes exposing (map, style, href, placeholder)
 import Html.Events exposing (onInput)
-import Http
 import Time
 import Control exposing (Control)
 import Control.Debounce as Debounce
 import Dict exposing (Dict)
-import Regex exposing (Regex, regex, find, HowMany(All))
-import RemoteData exposing (RemoteData(..))
-import Api.Phabricator as Phab exposing (PhabTask)
+import Doodads.Phabricator as Phab exposing (PhabDoodad)
 
 
 type alias Flags =
@@ -18,12 +15,11 @@ type alias Flags =
 
 
 type Doodad
-    = Phab (RemoteData String PhabTask)
+    = Phab PhabDoodad
 
 
 type alias Model =
-    { phabricatorToken : String
-    , linksText : String
+    { linksText : String
     , state : Control.State Msg
     , doodads : Dict String Doodad
     , outputText : String
@@ -32,8 +28,7 @@ type alias Model =
 
 init : Flags -> ( Model, Cmd Msg )
 init path =
-    { phabricatorToken = Phab.myPhabToken
-    , linksText = ""
+    { linksText = ""
     , state = Control.initialState
     , doodads = Dict.empty
     , outputText = ""
@@ -44,7 +39,7 @@ init path =
 type Msg
     = ChangeLinksText String
     | Deb (Control Msg)
-    | SearchResponse (Result Http.Error (List PhabTask))
+    | UpdateDoodads (List Doodad)
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -52,54 +47,97 @@ update msg model =
     case msg of
         ChangeLinksText txt ->
             let
-                ( newModel, listIds ) =
-                    model
-                        |> (\m -> { m | linksText = txt })
-                        |> updateTaskLinksFromLinksText
-                        |> updateNotAskedAndExtractIds
+                ( doodads, cmds ) =
+                    process txt model.doodads
 
-                cmds =
-                    if List.isEmpty listIds then
-                        Cmd.none
-                    else
-                        Http.send SearchResponse <| Phab.searchById model.phabricatorToken listIds
+                model_ =
+                    { model
+                        | linksText = txt
+                        , doodads = doodads
+                    }
             in
-                ( newModel, cmds )
+                ( model_, cmds )
 
         Deb debMsg ->
             Control.update (\s -> { model | state = s }) model.state debMsg
 
-        SearchResponse (Ok tasks) ->
-            ( updateReceivedTasks tasks model, Cmd.none )
-
-        SearchResponse (Err err) ->
-            let
-                _ =
-                    Debug.log "Http error: " err
-            in
-                ( model, Cmd.none )
+        UpdateDoodads ds ->
+            { model | doodads = updateExistingEntries ds model.doodads } ! []
 
 
-taskRegex : Regex
-taskRegex =
-    regex "T\\d+"
-
-
-updateTaskLinksFromLinksText : Model -> Model
-updateTaskLinksFromLinksText model =
+process : String -> Dict String Doodad -> ( Dict String Doodad, Cmd Msg )
+process text doodads =
     let
         matches =
-            List.map .match <| find All taskRegex model.linksText
+            match text
 
-        activeTaskLinks =
-            keepOnlyKeys matches model.doodads
+        matchesKeys =
+            List.map key matches
 
-        doodads =
-            List.foldl (\match dict -> Dict.update match (mapNothing <| Phab NotAsked) dict)
-                activeTaskLinks
-                matches
+        -- Filter and keep only active doodads in dict
+        activeDoodads =
+            keepOnlyKeys matchesKeys doodads
+
+        -- Update new not-processed doodads into the dictionary
+        newDoodads =
+            updateEmptyEntries matches activeDoodads
+
+        cmd =
+            fetch UpdateDoodads (Dict.values newDoodads)
     in
-        { model | doodads = doodads }
+        ( newDoodads, cmd )
+
+
+match : String -> List Doodad
+match text =
+    List.map Phab (Phab.match text)
+
+
+fetch : (List Doodad -> Msg) -> List Doodad -> Cmd Msg
+fetch tagger doodads =
+    let
+        ( phabs, _ ) =
+            List.foldl
+                (\d ( phabs, _ ) ->
+                    case d of
+                        Phab p ->
+                            ( p :: phabs, Nothing )
+                )
+                ( [], Nothing )
+                doodads
+    in
+        Cmd.batch
+            [ Phab.fetch (UpdateDoodads << List.map Phab) phabs
+            ]
+
+
+key : Doodad -> String
+key doodad =
+    case doodad of
+        Phab d ->
+            Phab.key d
+
+
+updateEmptyEntries : List Doodad -> Dict String Doodad -> Dict String Doodad
+updateEmptyEntries doodads dict =
+    -- Update new not-processed doodads into the dictionary
+    List.foldl
+        (\doodad dict ->
+            Dict.update (key doodad) (mapNothing <| doodad) dict
+        )
+        dict
+        doodads
+
+
+updateExistingEntries : List Doodad -> Dict String Doodad -> Dict String Doodad
+updateExistingEntries doodads dict =
+    -- Update only existing doodads in the dictionary
+    List.foldl
+        (\doodad dict ->
+            Dict.update (key doodad) (Maybe.map (\_ -> doodad)) dict
+        )
+        dict
+        doodads
 
 
 keepOnlyKeys : List String -> Dict String a -> Dict String a
@@ -115,54 +153,6 @@ mapNothing value entry =
 
         Nothing ->
             Just value
-
-
-updateNotAskedAndExtractIds : Model -> ( Model, List Int )
-updateNotAskedAndExtractIds ({ doodads } as model) =
-    let
-        doodadsList =
-            Dict.toList doodads
-
-        ( tl, ids ) =
-            List.foldl updateAndGetId ( doodads, [] ) doodadsList
-    in
-        ( { model | doodads = tl }, ids )
-
-
-updateAndGetId :
-    ( String, Doodad )
-    -> ( Dict String Doodad, List Int )
-    -> ( Dict String Doodad, List Int )
-updateAndGetId ( key, doodad ) ( dict, ids ) =
-    case doodad of
-        Phab data ->
-            -- Set NotAsked as Loading and collect ids
-            case data of
-                NotAsked ->
-                    case getPhabId key of
-                        Ok num ->
-                            ( Dict.insert key (Phab Loading) dict, ids ++ [ num ] )
-
-                        Err str ->
-                            ( Dict.insert key (Phab (Failure str)) dict, ids )
-
-                _ ->
-                    ( dict, ids )
-
-
-updateReceivedTasks : List PhabTask -> Model -> Model
-updateReceivedTasks tasks ({ doodads } as model) =
-    { model | doodads = List.foldl insertTask doodads tasks }
-
-
-insertTask : PhabTask -> Dict String Doodad -> Dict String Doodad
-insertTask task dict =
-    Dict.insert ("T" ++ toString task.id) (Phab (RemoteData.succeed task)) dict
-
-
-getPhabId : String -> Result String Int
-getPhabId phabId =
-    phabId |> String.dropLeft 1 |> String.toInt
 
 
 debounce : Msg -> Msg
@@ -214,21 +204,6 @@ viewDoodad id doodad =
     p []
         [ (case doodad of
             Phab data ->
-                case data of
-                    Success task ->
-                        a
-                            [ href <| "https://phabricator.wikimedia.org/T" ++ (toString task.id) ]
-                            [ text <| "T" ++ (toString task.id) ++ ": " ++ task.name ]
-
-                    Loading ->
-                        text <| id ++ ": Loading data"
-
-                    _ ->
-                        text id
+                Phab.render data
           )
         ]
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
