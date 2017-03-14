@@ -7,15 +7,11 @@ import Time
 import Control exposing (Control)
 import Control.Debounce as Debounce
 import Dict exposing (Dict)
-import Doodads.Phabricator as Phab exposing (PhabDoodad)
+import Doodad exposing (Doodad)
 
 
 type alias Flags =
     { noop : String }
-
-
-type Doodad
-    = Phab PhabDoodad
 
 
 type alias Model =
@@ -68,55 +64,27 @@ update msg model =
 process : String -> Dict String Doodad -> ( Dict String Doodad, Cmd Msg )
 process text doodads =
     let
+        -- Find doodad matches from text
         matches =
-            match text
+            Doodad.match text
 
         -- Filter and keep only active doodads in dict
         activeDoodads =
-            keepOnlyKeys (List.map key matches) doodads
+            keepOnlyKeys (List.map Doodad.key matches) doodads
 
         -- Update new not-processed doodads in the dictionary
         newDoodads =
             updateEmptyEntries matches activeDoodads
 
+        -- Trigger data processing/fetching and get updated doodads list
         ( updatedDoodadsList, cmd ) =
-            fetch UpdateDoodads (Dict.values newDoodads)
+            Doodad.fetch UpdateDoodads (Dict.values newDoodads)
 
+        -- Update processed doodads in the dictionary
         processedDoodads =
             updateExistingEntries updatedDoodadsList newDoodads
     in
         ( processedDoodads, cmd )
-
-
-match : String -> List Doodad
-match text =
-    List.map Phab (Phab.match text)
-
-
-fetch : (List Doodad -> Msg) -> List Doodad -> ( List Doodad, Cmd Msg )
-fetch tagger doodads =
-    let
-        ( phabs, _ ) =
-            List.foldl
-                (\d ( phabs, _ ) ->
-                    case d of
-                        Phab p ->
-                            ( p :: phabs, Nothing )
-                )
-                ( [], Nothing )
-                doodads
-
-        ( newPhabs, phabCmds ) =
-            Phab.fetch (UpdateDoodads << List.map Phab) phabs
-    in
-        (List.map Phab newPhabs) ! [ phabCmds ]
-
-
-key : Doodad -> String
-key doodad =
-    case doodad of
-        Phab d ->
-            Phab.key d
 
 
 updateEmptyEntries : List Doodad -> Dict String Doodad -> Dict String Doodad
@@ -124,7 +92,7 @@ updateEmptyEntries doodads dict =
     -- Update new not-processed doodads into the dictionary
     List.foldl
         (\doodad dict ->
-            Dict.update (key doodad) (mapNothing <| doodad) dict
+            Dict.update (Doodad.key doodad) (mapNothing <| doodad) dict
         )
         dict
         doodads
@@ -135,7 +103,7 @@ updateExistingEntries doodads dict =
     -- Update only existing doodads in the dictionary
     List.foldl
         (\doodad dict ->
-            Dict.update (key doodad) (Maybe.map (\_ -> doodad)) dict
+            Dict.update (Doodad.key doodad) (Maybe.map (\_ -> doodad)) dict
         )
         dict
         doodads
@@ -195,16 +163,6 @@ view model =
             ]
             (model.doodads
                 |> Dict.toList
-                |> List.map (\( k, v ) -> viewDoodad k v)
+                |> List.map (\( k, v ) -> Doodad.render k v)
             )
-        ]
-
-
-viewDoodad : String -> Doodad -> Html Msg
-viewDoodad id doodad =
-    p []
-        [ (case doodad of
-            Phab data ->
-                Phab.render data
-          )
         ]
