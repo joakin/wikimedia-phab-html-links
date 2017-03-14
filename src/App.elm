@@ -7,6 +7,7 @@ import Time
 import Control exposing (Control)
 import Control.Debounce as Debounce
 import Dict exposing (Dict)
+import DictHelpers exposing (updateEmptyEntries, updateExistingEntries, keepOnlyKeys)
 import Doodad exposing (Doodad)
 
 
@@ -58,7 +59,7 @@ update msg model =
             Control.update (\s -> { model | state = s }) model.state debMsg
 
         UpdateDoodads ds ->
-            { model | doodads = updateExistingEntries ds model.doodads } ! []
+            { model | doodads = updateExistingEntries Doodad.key ds model.doodads } ! []
 
 
 process : String -> Dict String Doodad -> ( Dict String Doodad, Cmd Msg )
@@ -74,7 +75,7 @@ process text doodads =
 
         -- Update new not-processed doodads in the dictionary
         newDoodads =
-            updateEmptyEntries matches activeDoodads
+            updateEmptyEntries Doodad.key matches activeDoodads
 
         -- Trigger data processing/fetching and get updated doodads list
         ( updatedDoodadsList, cmd ) =
@@ -82,46 +83,9 @@ process text doodads =
 
         -- Update processed doodads in the dictionary
         processedDoodads =
-            updateExistingEntries updatedDoodadsList newDoodads
+            updateExistingEntries Doodad.key updatedDoodadsList newDoodads
     in
         ( processedDoodads, cmd )
-
-
-updateEmptyEntries : List Doodad -> Dict String Doodad -> Dict String Doodad
-updateEmptyEntries doodads dict =
-    -- Update new not-processed doodads into the dictionary
-    List.foldl
-        (\doodad dict ->
-            Dict.update (Doodad.key doodad) (mapNothing <| doodad) dict
-        )
-        dict
-        doodads
-
-
-updateExistingEntries : List Doodad -> Dict String Doodad -> Dict String Doodad
-updateExistingEntries doodads dict =
-    -- Update only existing doodads in the dictionary
-    List.foldl
-        (\doodad dict ->
-            Dict.update (Doodad.key doodad) (Maybe.map (\_ -> doodad)) dict
-        )
-        dict
-        doodads
-
-
-keepOnlyKeys : List String -> Dict String a -> Dict String a
-keepOnlyKeys keys dict =
-    Dict.filter (\key _ -> List.member key keys) dict
-
-
-mapNothing : a -> Maybe a -> Maybe a
-mapNothing value entry =
-    case entry of
-        Just _ ->
-            entry
-
-        Nothing ->
-            Just value
 
 
 debounce : Msg -> Msg
