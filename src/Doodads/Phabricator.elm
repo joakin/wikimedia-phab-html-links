@@ -5,6 +5,7 @@ module Doodads.Phabricator
         , key
         , fetch
         , render
+        , renderText
         )
 
 import Regex exposing (Regex, regex, find, Match, HowMany(All))
@@ -73,13 +74,36 @@ render doodad =
             text <| (key doodad) ++ ": Error: " ++ err
 
 
+renderText : PhabDoodad -> String
+renderText doodad =
+    case doodad.status of
+        Success task ->
+            let
+                title =
+                    phabIdToString task.id ++ ": " ++ task.name
+
+                url =
+                    "https://phabricator.wikimedia.org/" ++ (phabIdToString task.id)
+            in
+                "[" ++ title ++ "](" ++ url ++ ")"
+
+        Loading ->
+            (key doodad) ++ "(Loading data)"
+
+        NotAsked ->
+            (key doodad) ++ "(To be fetched)"
+
+        Failure err ->
+            (key doodad) ++ "(Error: " ++ err ++ ")"
+
+
 
 -- Utility functions
 
 
 taskRegex : Regex
 taskRegex =
-    regex "T\\d+"
+    regex "\\bT\\d+\\b"
 
 
 fromMatch : Match -> PhabDoodad

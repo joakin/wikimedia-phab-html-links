@@ -5,10 +5,12 @@ module Doodad
         , key
         , fetch
         , render
+        , renderInText
         )
 
 import Html exposing (Html, p)
 import Doodads.Phabricator as Phab exposing (PhabDoodad)
+import Regex exposing (Regex, HowMany(All), regex, escape, replace)
 
 
 type Doodad
@@ -46,8 +48,24 @@ fetch tagger doodads =
         (List.map Phab newPhabs) ! [ phabCmds ]
 
 
+renderInText : String -> Doodad -> String -> String
+renderInText key doodad text =
+    let
+        rx =
+            regex (escape key)
+
+        renderText =
+            (\_ ->
+                case doodad of
+                    Phab d ->
+                        Phab.renderText d
+            )
+    in
+        replace All rx renderText text
+
+
 render : String -> Doodad -> Html msg
-render id doodad =
+render key doodad =
     p []
         [ (case doodad of
             Phab data ->

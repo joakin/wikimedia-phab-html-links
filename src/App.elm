@@ -9,6 +9,8 @@ import Control.Debounce as Debounce
 import Dict exposing (Dict)
 import DictHelpers exposing (updateEmptyEntries, updateExistingEntries, keepOnlyKeys)
 import Doodad exposing (Doodad)
+import Markdown
+import Task
 
 
 type alias Flags =
@@ -35,6 +37,7 @@ init path =
 
 type Msg
     = ChangeLinksText String
+    | ProcessText ()
     | Deb (Control Msg)
     | UpdateDoodads (List Doodad)
 
@@ -43,15 +46,18 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ChangeLinksText txt ->
+            { model | linksText = txt }
+                ! [ Task.succeed ()
+                        |> Task.perform (debounce << ProcessText)
+                  ]
+
+        ProcessText _ ->
             let
                 ( doodads, cmds ) =
-                    process txt model.doodads
+                    process model.linksText model.doodads
 
                 model_ =
-                    { model
-                        | linksText = txt
-                        , doodads = doodads
-                    }
+                    { model | doodads = doodads }
             in
                 ( model_, cmds )
 
@@ -59,7 +65,11 @@ update msg model =
             Control.update (\s -> { model | state = s }) model.state debMsg
 
         UpdateDoodads ds ->
-            { model | doodads = updateExistingEntries Doodad.key ds model.doodads } ! []
+            { model
+                | doodads =
+                    updateExistingEntries Doodad.key ds model.doodads
+            }
+                ! []
 
 
 process : String -> Dict String Doodad -> ( Dict String Doodad, Cmd Msg )
@@ -88,6 +98,11 @@ process text doodads =
         ( processedDoodads, cmd )
 
 
+renderDoodadsInText : Dict String Doodad -> String -> String
+renderDoodadsInText doodads text =
+    Dict.foldl Doodad.renderInText text doodads
+
+
 debounce : Msg -> Msg
 debounce =
     Debounce.trailing Deb (0.5 * Time.second)
@@ -112,7 +127,7 @@ view model =
                 , ( "padding", "1em" )
                 , ( "box-sizing", "border-box" )
                 ]
-            , map debounce <| onInput ChangeLinksText
+            , onInput ChangeLinksText
             , placeholder "Write task numbers or task links here, like T12345"
             ]
             [ text model.linksText
@@ -129,4 +144,13 @@ view model =
                 |> Dict.toList
                 |> List.map (\( k, v ) -> Doodad.render k v)
             )
+        , Markdown.toHtml
+            [ style
+                [ ( "flex", "1" )
+                , ( "box-sizing", "border-box" )
+                , ( "padding", "1em" )
+                , ( "width", "90%" )
+                ]
+            ]
+            (renderDoodadsInText model.doodads model.linksText)
         ]
