@@ -19,7 +19,7 @@ type alias Flags =
 
 
 type alias Model =
-    { linksText : String
+    { rawText : String
     , state : Control.State Msg
     , doodads : Dict String Doodad
     , outputText : String
@@ -28,7 +28,7 @@ type alias Model =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    { linksText = flags.text
+    { rawText = flags.text
     , state = Control.initialState
     , doodads = Dict.empty
     , outputText = ""
@@ -44,31 +44,31 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
+update msg ({ rawText, doodads, state } as model) =
     case msg of
         ChangeLinksText txt ->
-            { model | linksText = txt }
+            { model | rawText = txt }
                 ! [ Task.succeed ()
                         |> Task.perform (debounce << ProcessText)
                   ]
 
         ProcessText _ ->
             let
-                ( doodads, cmds ) =
-                    process model.linksText model.doodads
+                ( newDoodads, cmds ) =
+                    process rawText doodads
 
                 model_ =
-                    { model | doodads = doodads }
+                    { model | doodads = newDoodads }
             in
                 ( model_, cmds )
 
         Deb debMsg ->
-            Control.update (\s -> { model | state = s }) model.state debMsg
+            Control.update (\s -> { model | state = s }) state debMsg
 
         UpdateDoodads ds ->
             { model
                 | doodads =
-                    updateExistingEntries Doodad.key ds model.doodads
+                    updateExistingEntries Doodad.key ds doodads
             }
                 ! []
 
@@ -110,7 +110,7 @@ debounce =
 
 
 view : Model -> Html Msg
-view model =
+view { rawText, doodads } =
     div
         [ class "app" ]
         [ div
@@ -119,30 +119,23 @@ view model =
                 [ class "editor"
                 , onInput ChangeLinksText
                 , placeholder "Write task numbers or task links here, like T12345"
-                , defaultValue model.linksText
+                , defaultValue rawText
                 ]
                 []
             , a
                 [ class "permalink"
-                , href <| "./?t=" ++ Http.encodeUri model.linksText
+                , href <| "./?t=" ++ Http.encodeUri rawText
                 ]
                 [ text "permalink" ]
             ]
-          -- , div
-          --     [ style
-          --         [ ( "flex", "1" )
-          --         , ( "box-sizing", "border-box" )
-          --         , ( "padding", "1em" )
-          --         , ( "width", "90%" )
-          --         , ( "background-color", "#fafafa" )
-          --         , ( "overflow", "auto" )
-          --         ]
-          --     ]
-          --     (model.doodads
-          --         |> Dict.toList
-          --         |> List.map (\( k, v ) -> Doodad.render k v)
-          --     )
         , Markdown.toHtml
             [ class "document" ]
-            (renderDoodadsInText model.doodads model.linksText)
+            (renderDoodadsInText doodads rawText)
         ]
+
+
+
+--     (doodads
+--         |> Dict.toList
+--         |> List.map (\( k, v ) -> Doodad.render k v)
+--     )
