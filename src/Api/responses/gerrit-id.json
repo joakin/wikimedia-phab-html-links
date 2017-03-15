@@ -1,0 +1,21 @@
+)]}'
+{
+  "id": "mediawiki%2Fextensions%2FPopups~master~I55d76b7db168f3745e0ac69852c152322ab385c3",
+  "project": "mediawiki/extensions/Popups",
+  "branch": "master",
+  "topic": "qunit-tests-in-node",
+  "hashtags": [],
+  "change_id": "I55d76b7db168f3745e0ac69852c152322ab385c3",
+  "subject": "Set up qunit running in node to migrate tests to commonjs",
+  "status": "MERGED",
+  "created": "2017-02-15 12:12:24.000000000",
+  "updated": "2017-02-21 20:19:23.000000000",
+  "submitted": "2017-02-21 20:19:23.000000000",
+  "submittable": false,
+  "insertions": 200,
+  "deletions": 190,
+  "_number": 337838,
+  "owner": {
+    "_account_id": 2027
+  }
+}

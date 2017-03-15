@@ -113,6 +113,23 @@ debounce =
     Debounce.trailing Deb (0.5 * Time.second)
 
 
+placeholder_ : String
+placeholder_ =
+    """Write task numbers, gerrit change id or patch numbers here.
+
+Examples:
+
+    T12345
+
+    I55d76b7db168f3745
+
+    337837
+
+You can also write markdown!
+
+"""
+
+
 view : Model -> Html Msg
 view { rawText, doodads } =
     div
@@ -122,7 +139,7 @@ view { rawText, doodads } =
             [ textarea
                 [ class "editor"
                 , onInput ChangeLinksText
-                , placeholder "Write task numbers or task links here, like T12345"
+                , placeholder placeholder_
                 , defaultValue rawText
                 ]
                 []
