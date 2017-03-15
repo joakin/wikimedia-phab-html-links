@@ -33,7 +33,11 @@ init flags =
     , doodads = Dict.empty
     , outputText = ""
     }
-        ! []
+        ! [ if String.isEmpty flags.text then
+                Cmd.none
+            else
+                Task.succeed () |> Task.perform ProcessText
+          ]
 
 
 type Msg
