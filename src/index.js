@@ -1,3 +1,7 @@
+if (process.env.NODE_ENV === 'production') {
+  require('./rollbar');
+}
+
 require('./main.css');
 var Elm = require('./Main.elm');
 
