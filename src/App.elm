@@ -1,7 +1,7 @@
 module App exposing (..)
 
 import Html exposing (Html, text, div, textarea, p, a)
-import Html.Attributes exposing (class, href, placeholder)
+import Html.Attributes exposing (class, href, placeholder, defaultValue)
 import Html.Events exposing (onInput)
 import Http
 import Time
@@ -119,6 +119,7 @@ view model =
                 [ class "editor"
                 , onInput ChangeLinksText
                 , placeholder "Write task numbers or task links here, like T12345"
+                , defaultValue model.linksText
                 ]
                 []
             , a
