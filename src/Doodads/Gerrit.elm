@@ -75,11 +75,14 @@ title : GerritPatch -> String
 title patch =
     -- Use 7 digits on the changeid to not be re-matched by other regex
     -- (patchRegex matches 8)
-    (String.left 7 patch.changeId)
-        ++ " ["
+    " ["
+        ++ patch.project
+        ++ "] "
+        ++ (String.left 7 patch.changeId)
+        ++ " ("
         ++ String.left 1 patch.status
         ++ String.toLower (String.dropLeft 1 patch.status)
-        ++ "]: "
+        ++ "): "
         ++ patch.subject
 
 
@@ -161,7 +164,7 @@ mapHttpResponse doodad res =
                             successStatus patch doodad
 
                         Err err ->
-                            failureStatus "Error parsing" doodad
+                            failureStatus ("Error parsing: " ++ (toString err)) doodad
 
                 ChangeId ->
                     case Api.decodeGerritPatchResponse (D.list Api.decodeGerritPatch) str of
@@ -172,10 +175,10 @@ mapHttpResponse doodad res =
                             successStatus p doodad
 
                         Err err ->
-                            failureStatus "Error parsing" doodad
+                            failureStatus ("Error parsing: " ++ (toString err)) doodad
 
         Err err ->
-            failureStatus "Request failed" doodad
+            failureStatus ("Request failed" ++ (toString err)) doodad
     ]
 
 
