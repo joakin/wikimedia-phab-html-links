@@ -34,7 +34,6 @@ type alias GerritPatch =
     { id : String
     , project : String
     , branch : String
-    , topic : String
     , changeId : String
     , subject : String
     , status : String
@@ -56,13 +55,8 @@ decodeGerritPatch =
         (D.field "id" D.string)
         (D.field "project" D.string)
         (D.field "branch" D.string)
-        (D.field "topic" D.string)
         (D.field "change_id" D.string)
         (D.field "subject" D.string)
         (D.field "status" D.string)
         (D.field "created" D.string)
-        |> D.andThen
-            (\f ->
-                D.map f
-                    (D.field "updated" D.string)
-            )
+        (D.field "updated" D.string)
