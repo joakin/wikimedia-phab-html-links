@@ -6,6 +6,8 @@ const phabApiKey = process.env.PHAB_API_KEY;
 
 http
   .createServer((req, res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
     const uri = url.parse(req.url, true);
     if (uri.pathname === '/phabricator') {
       const ids = uri.query.ids && uri.query.ids.split('|');
