@@ -126,7 +126,7 @@ renderText doodad =
 
 patchRegex : Regex
 patchRegex =
-    regex "\\b(I[0-9a-f]{8,})|(\\d{6})\\b"
+    regex "\\b(I[0-9a-f]{8,})\\b|\\b(\\d{6})\\b"
 
 
 fromMatch : Match -> GerritDoodad
