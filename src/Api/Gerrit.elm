@@ -2,22 +2,23 @@ module Api.Gerrit exposing (..)
 
 import Http exposing (stringBody)
 import Json.Decode as D exposing (Decoder, decodeString)
-import Query exposing (joinUrlEncoded)
+import Query exposing (queryEscape)
+import Api.Api exposing (apiUrl)
 
 
-apiUrl : String
-apiUrl =
-    "https://cors-proxy-mhwanfbyyu.now.sh/https://gerrit.wikimedia.org/r/changes/"
+path : String
+path =
+    "/gerrit"
 
 
 byIdUrl : String -> String
 byIdUrl id =
-    apiUrl ++ id
+    apiUrl ++ path ++ "?id=" ++ queryEscape id
 
 
 byChangeIdUrl : String -> String
 byChangeIdUrl changeId =
-    apiUrl ++ "?" ++ joinUrlEncoded [ ( "q", changeId ) ]
+    apiUrl ++ path ++ "?changeId=" ++ queryEscape changeId
 
 
 getId : String -> Http.Request String

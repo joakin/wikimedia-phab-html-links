@@ -1,4 +1,4 @@
-module Query exposing (joinUrlEncoded)
+module Query exposing (joinUrlEncoded, queryEscape)
 
 import Http
 import String
