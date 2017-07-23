@@ -1,0 +1,9 @@
+{
+    "name" : "wikimedia-phab-html-links",
+    "title" : "Pretty HTML links from Phabricator and Gerrit",
+    "description" : "Input urls or ids like T1234 and I12345 and get HTML links with proper title to copy and paste in emails or other HTML enabled editors.",
+    "url" : "http://chimeces.com/wikimedia-phab-html-links/",
+    "keywords" : "html, link, phabricator, gerrit",
+    "author" : "Joaquin Oltra Hernandez",
+    "repository" : "https://github.com/joakin/wikimedia-phab-html-links"
+}
