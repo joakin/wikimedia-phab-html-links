@@ -6,7 +6,11 @@ import "./main.css";
 import * as Elm from "./Main.elm";
 
 const root = document.getElementById("root");
-Elm.Main.embed(root, { text: getParameterByName("t") || "" });
+const app = Elm.Main.embed(root, { text: getParameterByName("t") || "" });
+
+app.ports.replaceURL.subscribe(url =>
+  window.history.replaceState(null, null, url)
+);
 
 function getParameterByName(name) {
   var match = RegExp("[?&]" + name + "=([^&]*)").exec(window.location.search);

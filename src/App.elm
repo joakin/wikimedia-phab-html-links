@@ -12,6 +12,7 @@ import DictHelpers exposing (updateEmptyEntries, updateExistingEntries, keepOnly
 import Doodad exposing (Doodad)
 import Markdown
 import Task
+import Ports
 
 
 type alias Flags =
@@ -20,6 +21,7 @@ type alias Flags =
 
 type alias Model =
     { rawText : String
+    , urlEncodedText : String
     , state : Control.State Msg
     , doodads : Dict String Doodad
     , outputText : String
@@ -29,6 +31,7 @@ type alias Model =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     { rawText = flags.text
+    , urlEncodedText = textToURL flags.text
     , state = Control.initialState
     , doodads = Dict.empty
     , outputText = ""
@@ -48,13 +51,21 @@ type Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
-update msg ({ rawText, doodads, state } as model) =
+update msg ({ rawText, urlEncodedText, doodads, state } as model) =
     case msg of
         ChangeLinksText txt ->
-            { model | rawText = txt }
-                ! [ Task.succeed ()
+            let
+                model_ =
+                    { model | rawText = txt, urlEncodedText = textToURL txt }
+
+                debounceCmd =
+                    Task.succeed ()
                         |> Task.perform (debounce << ProcessText)
-                  ]
+            in
+                model_
+                    ! [ debounceCmd
+                      , Ports.replaceURL model_.urlEncodedText
+                      ]
 
         ProcessText _ ->
             let
@@ -131,7 +142,7 @@ You can also write markdown!
 
 
 view : Model -> Html Msg
-view { rawText, doodads } =
+view { rawText, urlEncodedText, doodads } =
     div
         [ class "app" ]
         [ div
@@ -145,7 +156,7 @@ view { rawText, doodads } =
                 []
             , a
                 [ class "permalink"
-                , href <| "./?t=" ++ Http.encodeUri rawText
+                , href <| urlEncodedText
                 ]
                 [ text "permalink" ]
             ]
@@ -153,6 +164,11 @@ view { rawText, doodads } =
             [ class "document" ]
             (renderDoodadsInText doodads rawText)
         ]
+
+
+textToURL : String -> String
+textToURL txt =
+    "./?t=" ++ Http.encodeUri txt
 
 
 
