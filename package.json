@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "start": "elm-app start",
-    "build": "NODE_ENV=production elm-app build && sed -i.bak 's/\"\\//\".\\//g' dist/index.html && rm dist/index.html.bak && cp toolinfo.json dist/"
+    "start": "PUBLIC_URL=./ elm-app start",
+    "build": "PUBLIC_URL=./ NODE_ENV=production elm-app build && cp toolinfo.json build/"
   }
 }

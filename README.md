@@ -11,4 +11,4 @@ This is written in [Elm](elm-lang.org).
 
 For development you need to `npm install -g create-elm-app` and then `npm
 start` for development and `npm run build` to compile assets for production in
-`dist/`.
+`build/`.
