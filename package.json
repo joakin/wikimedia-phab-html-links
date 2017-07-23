@@ -1,6 +1,6 @@
 {
   "scripts": {
     "start": "PUBLIC_URL=./ elm-app start",
-    "build": "PUBLIC_URL=./ NODE_ENV=production elm-app build && cp toolinfo.json build/"
+    "build": "PUBLIC_URL=./ NODE_ENV=production elm-app build; cp toolinfo.json build/"
   }
 }
