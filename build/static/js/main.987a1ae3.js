@@ -100,15 +100,16 @@ if (true) {
 }
 
 var root = document.getElementById("root");
-var app = Elm.Main.embed(root, { text: getParameterByName("t") || "" });
+var app = Elm.Main.embed(root, { text: getTextParam(window.location.hash) });
 
 app.ports.replaceURL.subscribe(function (url) {
   return window.history.replaceState(null, null, url);
 });
 
-function getParameterByName(name) {
-  var match = RegExp("[?&]" + name + "=([^&]*)").exec(window.location.search);
-  return match && decodeURIComponent(match[1].replace(/\+/g, " "));
+function getTextParam(hash) {
+  if (!hash) return "";
+
+  return decodeURIComponent(hash.slice(1));
 }
 
 /***/ }),
@@ -10734,7 +10735,7 @@ var _user$project$Ports$replaceURL = _elm_lang$core$Native_Platform.outgoingPort
 var _user$project$App$textToURL = function (txt) {
 	return A2(
 		_elm_lang$core$Basics_ops['++'],
-		'./?t=',
+		'#',
 		_elm_lang$http$Http$encodeUri(txt));
 };
 var _user$project$App$placeholder_ = 'Write task numbers, gerrit change id or patch numbers here.\n\nExamples:\n\n    T12345\n\n    I55d76b7db168f3745\n\n    337837\n\nYou can also write markdown!\n\n';
