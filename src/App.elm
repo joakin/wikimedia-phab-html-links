@@ -168,7 +168,7 @@ view { rawText, urlEncodedText, doodads } =
 
 textToURL : String -> String
 textToURL txt =
-    "./?t=" ++ Http.encodeUri txt
+    "#" ++ Http.encodeUri txt
 
 
 
