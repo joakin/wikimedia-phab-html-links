@@ -7,7 +7,7 @@ html, body {
 }
 
 body, td, input, select, textarea {
-  font-family: -apple-system, 'Source Sans Pro', 'Trebuchet MS', 'Lucida Grande', 'Bitstream Vera Sans', 'Helvetica Neue', sans-serif;
+  font-family: sans-serif;
   font-size: 18px;
 }
 
