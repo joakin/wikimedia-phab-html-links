@@ -39,13 +39,13 @@ init flags =
         ! [ if String.isEmpty flags.text then
                 Cmd.none
             else
-                Task.succeed () |> Task.perform ProcessText
+                Task.succeed () |> Task.perform (ProcessText flags.text)
           ]
 
 
 type Msg
     = ChangeLinksText String
-    | ProcessText ()
+    | ProcessText String ()
     | Deb (Control Msg)
     | UpdateDoodads (List Doodad)
 
@@ -54,28 +54,29 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg ({ rawText, urlEncodedText, doodads, state } as model) =
     case msg of
         ChangeLinksText txt ->
-            let
-                model_ =
-                    { model | rawText = txt, urlEncodedText = textToURL txt }
+            model
+                ! [ Task.succeed ()
+                        |> Task.perform (debounce << (ProcessText txt))
+                  ]
 
-                debounceCmd =
-                    Task.succeed ()
-                        |> Task.perform (debounce << ProcessText)
-            in
-                model_
-                    ! [ debounceCmd
-                      , Ports.replaceURL model_.urlEncodedText
-                      ]
-
-        ProcessText _ ->
+        ProcessText txt _ ->
             let
                 ( newDoodads, cmds ) =
-                    process rawText doodads
+                    process txt doodads
 
                 model_ =
-                    { model | doodads = newDoodads }
+                    { model
+                        | rawText = txt
+                        , urlEncodedText = textToURL txt
+                        , doodads = newDoodads
+                    }
             in
-                ( model_, cmds )
+                ( model_
+                , Cmd.batch
+                    [ cmds
+                    , Ports.replaceURL model_.urlEncodedText
+                    ]
+                )
 
         Deb debMsg ->
             Control.update (\s -> { model | state = s }) state debMsg
